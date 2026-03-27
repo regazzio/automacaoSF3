@@ -21,7 +21,7 @@ def down_ocorrencias():
     SFTP_PORT = int(os.getenv("FTP_PORT", 22))
 
     # caminho
-    ARQUIVO_REMOTO = f"/arquivos/OCORRENCIAS SAC/Ocorrências - Fevereiro 2026.xls"
+    ARQUIVO_REMOTO = f"/arquivos/OCORRENCIAS SAC/Ocorrências - Março 2026.xls"
     ARQUIVO_LOCAL = DOWNLOADS_DIR / "ocorrenciasSF3.xls"
 
     print("Arquivo remoto:", ARQUIVO_REMOTO)
