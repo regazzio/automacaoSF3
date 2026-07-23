@@ -1,7 +1,8 @@
 import pandas as pd
 from pathlib import Path
 import datetime
-
+from data_utils import obter_mes_ano
+mes, mes_upper, ano = obter_mes_ano()
 
 def filter_ocorrencias():
     hoje = datetime.date.today()
@@ -23,9 +24,9 @@ def filter_ocorrencias():
     mes_atual = meses_pt[hoje.month]
     ano_atual = hoje.year
 
-    NOME_DA_ABA_ALVO = f"{mes_atual} {ano_atual}"
-    COLUNA_DATA_REAL = 'Data'
-    COLUNA_CONTRATO = 'Contrato'
+    NOME_DA_ABA_ALVO = f"{mes_upper} {ano}"
+    COLUNA_DATA_REAL = 'DATA'
+    COLUNA_CONTRATO = 'CONTRATO'
 
     # histórico
     if PATH_HISTORICO.exists() and PATH_HISTORICO.stat().st_size > 0:
@@ -96,8 +97,8 @@ def filter_ocorrencias():
 
     #formata data p chata da sabrina
     df_html = ocorrencias_filtradas.copy()
-    df_html['Data'] = df_html['Data'].dt.strftime('%d/%m/%Y')
-    print("Data formatada para chata da Sabrina.")
+    df_html['DATA'] = df_html['DATA'].dt.strftime('%d/%m/%Y')
+    print("Data formatada para a Sabrina.")
 
     #salva no historico os contratos enviados
     if not ocorrencias_para_historico.empty:
