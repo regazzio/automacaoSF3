@@ -4,7 +4,9 @@ from pathlib import Path
 from dotenv import load_dotenv
 import os
 load_dotenv()
+from data_utils import obter_mes_ano
 
+mes, mes_upper, ano = obter_mes_ano()
 
 def down_ocorrencias():
     
@@ -21,8 +23,8 @@ def down_ocorrencias():
     SFTP_PORT = int(os.getenv("FTP_PORT", 22))
 
     # caminho
-    ARQUIVO_REMOTO = f"/arquivos/OCORRENCIAS SAC/Ocorrências - Março 2026.xls"
-    ARQUIVO_LOCAL = DOWNLOADS_DIR / "ocorrenciasSF3.xls"
+    ARQUIVO_REMOTO = f"/arquivos/OCORRENCIAS SAC/Ocorrências - {mes_upper} {ano}.xlsx"
+    ARQUIVO_LOCAL = DOWNLOADS_DIR / "ocorrenciasSF3.xlsx"
 
     print("Arquivo remoto:", ARQUIVO_REMOTO)
 
