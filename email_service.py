@@ -25,43 +25,30 @@ def generate_html(df):
         .resumo {
             font-family: Arial, sans-serif;
             font-size: 13px;
-            margin-bottom: 12px;
-        }
-        .contrato-header {
-            font-family: Arial, sans-serif;
-            margin-top: 18px;
-            margin-bottom: 4px;
-        }
-        .contrato-badge {
-            background-color: #2c3e50;
-            color: #ffffff;
-            padding: 4px 10px;
-            border-radius: 4px;
-            font-weight: bold;
-            font-size: 13px;
-        }
-        .contrato-qtd {
-            color: #555555;
-            font-size: 12px;
-            margin-left: 6px;
+            margin-bottom: 10px;
         }
         table.ocorrencias {
             border-collapse: collapse;
             font-family: Arial, sans-serif;
             font-size: 12px;
             width: 100%;
-            margin-bottom: 4px;
         }
         table.ocorrencias th {
-            background-color: #f2f2f2;
+            background-color: #2c3e50;
+            color: #ffffff;
             padding: 6px 8px;
             text-align: left;
-            border: 1px solid #ddd;
+            border: 1px solid #1a252f;
         }
         table.ocorrencias td {
             padding: 6px 8px;
             border: 1px solid #ddd;
             vertical-align: top;
+        }
+        td.contrato-cell {
+            font-weight: bold;
+            background-color: #eef2f5;
+            border-right: 2px solid #2c3e50;
         }
     </style>
     """
@@ -80,28 +67,40 @@ def generate_html(df):
         if c in df.columns
     ]
 
-    blocos_html = []
+    cabecalho_colunas = "".join(f"<th>{c}</th>" for c in colunas_exibir)
+    linhas_html = []
+    cores_fundo = ["#ffffff", "#f7f9fa"]  # alterna cor por grupo de contrato
 
-    # mantém a ordem de aparição no arquivo (sort=False), agrupando por contrato
-    for contrato, grupo in df.groupby("CONTRATO", sort=False):
+    for i, (contrato, grupo) in enumerate(df.groupby("CONTRATO", sort=False)):
         qtd = len(grupo)
-        plural = "ocorrência" if qtd == 1 else "ocorrências"
+        cor_fundo = cores_fundo[i % 2]
 
-        cabecalho = f"""
-        <div class="contrato-header">
-            <span class="contrato-badge">Contrato {contrato}</span>
-            <span class="contrato-qtd">{qtd} {plural}</span>
-        </div>
-        """
+        for idx, (_, linha) in enumerate(grupo.iterrows()):
+            linhas_html.append('<tr style="background-color:%s;">' % cor_fundo)
 
-        tabela = grupo[colunas_exibir].to_html(
-            index=False, border=0, justify="left", classes="ocorrencias", escape=False
-        )
+            if idx == 0:
+                linhas_html.append(
+                    f'<td class="contrato-cell" rowspan="{qtd}">{contrato}</td>'
+                )
 
-        blocos_html.append(cabecalho + tabela)
+            for col in colunas_exibir:
+                linhas_html.append(f"<td>{linha[col]}</td>")
+
+            linhas_html.append("</tr>")
+
+    tabela = f"""
+    <table class="ocorrencias">
+        <thead>
+            <tr><th>CONTRATO</th>{cabecalho_colunas}</tr>
+        </thead>
+        <tbody>
+            {''.join(linhas_html)}
+        </tbody>
+    </table>
+    """
 
     print("Contratos encontrados e tabela HTML agrupada gerada.")
-    return estilo + resumo + "".join(blocos_html)
+    return estilo + resumo + tabela
 
 
 def send_email(html, anexo):

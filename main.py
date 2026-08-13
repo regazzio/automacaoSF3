@@ -64,9 +64,9 @@ def main():
 
 if __name__ == "__main__":
     schedule.every().monday.at("12:00").do(main)
-    schedule.every().tuesday.at("19:56").do(main)
-    schedule.every().wednesday.at("13:14").do(main)
-    schedule.every().thursday.at("13:31").do(main)
+    schedule.every().tuesday.at("13:50").do(main)
+    schedule.every().wednesday.at("14:26").do(main)
+    schedule.every().thursday.at("12:00").do(main)
     schedule.every().friday.at("12:00").do(main)
 
     print("Agendador iniciado. Aguardando execução às 12:00...")
