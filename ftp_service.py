@@ -6,10 +6,10 @@ import os
 load_dotenv()
 from data_utils import obter_mes_ano
 
-mes, mes_upper, ano = obter_mes_ano()
 
 def down_ocorrencias():
-    
+    mes, mes_upper, ano = obter_mes_ano()
+
     BASE_DIR = Path(__file__).resolve().parent
     load_dotenv(BASE_DIR / ".env")
 

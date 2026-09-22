@@ -2,10 +2,11 @@ import pandas as pd
 from pathlib import Path
 import datetime
 from data_utils import obter_mes_ano
-mes, mes_upper, ano = obter_mes_ano()
+
 
 def filter_ocorrencias():
     hoje = datetime.date.today()
+    mes, mes_upper, ano = obter_mes_ano()
 
     PATH_CWD = Path.cwd()
     PATH_DOWNLOADS = PATH_CWD / 'src' / 'downloads'
@@ -17,20 +18,18 @@ def filter_ocorrencias():
     NOME_DA_ABA_ALVO = f"{mes_upper} {ano}"
     COLUNA_DATA_REAL = 'DATA'
     COLUNA_CONTRATO = 'CONTRATO'
-    COLUNA_COD_OCORRENCIA = 'COD.OCORRENCIA'
-    COLUNA_COMPLEMENTO = 'COMPLEMENTO 2'
 
     # histórico
     if PATH_HISTORICO.exists() and PATH_HISTORICO.stat().st_size > 0:
         df_historico = pd.read_csv(PATH_HISTORICO, dtype=str)
     else:
         df_historico = pd.DataFrame(
-            columns=["CHAVE", "Contrato", "Data_Ocorrencia", "Cod_Ocorrencia", "Complemento", "Data_Envio"]
+            columns=["Contrato", "Data_Ocorrencia", "Data_Envio"]
         )
 
     print("Linhas no histórico:", len(df_historico))
 
-    # le excel
+    #le excel
     df_ocorrencias = pd.read_excel(
         PATH_OCORRENCIAS,
         sheet_name=NOME_DA_ABA_ALVO,
@@ -38,11 +37,7 @@ def filter_ocorrencias():
         engine="openpyxl"
     )
 
-    print("Linhas lidas do excel (antes de remover duplicatas exatas):", len(df_ocorrencias))
-    df_ocorrencias = df_ocorrencias.drop_duplicates(keep='first').reset_index(drop=True)
-    print("Linhas após remover duplicatas exatas:", len(df_ocorrencias))
-
-    # filtra data
+    #filtra data
     df_ocorrencias.dropna(subset=[COLUNA_DATA_REAL], inplace=True)
     df_ocorrencias[COLUNA_DATA_REAL] = pd.to_datetime(
         df_ocorrencias[COLUNA_DATA_REAL],
@@ -50,58 +45,66 @@ def filter_ocorrencias():
     )
     print("Data filtrada com sucesso.")
 
-    # normaliza colunas usadas na chave (evita erro se vier NaN)
+    #criando a chave
     df_ocorrencias[COLUNA_CONTRATO] = df_ocorrencias[COLUNA_CONTRATO].astype(str)
-    df_ocorrencias[COLUNA_COD_OCORRENCIA] = df_ocorrencias[COLUNA_COD_OCORRENCIA].astype(str)
-    df_ocorrencias[COLUNA_COMPLEMENTO] = df_ocorrencias[COLUNA_COMPLEMENTO].fillna('').astype(str)
 
-    # Data_Key inclui data E hora (se a coluna DATA tiver hora, isso já diferencia
-    # ocorrências do mesmo contrato/dia automaticamente)
-    df_ocorrencias["Data_Key"] = df_ocorrencias[COLUNA_DATA_REAL].astype(str)
-
-    # CHAVE única por OCORRÊNCIA, não só por contrato+dia
-    df_ocorrencias["CHAVE"] = (
-        df_ocorrencias[COLUNA_CONTRATO] + "_"
-        + df_ocorrencias["Data_Key"] + "_"
-        + df_ocorrencias[COLUNA_COD_OCORRENCIA] + "_"
-        + df_ocorrencias[COLUNA_COMPLEMENTO]
+    df_ocorrencias["Data_Key"] = (
+        df_ocorrencias[COLUNA_DATA_REAL].dt.date.astype(str)
     )
 
-    # remove qualquer coisa que já esteja no histórico (mesma CHAVE completa)
+    df_ocorrencias["CHAVE"] = (
+        df_ocorrencias[COLUNA_CONTRATO] + "_" + df_ocorrencias["Data_Key"]
+    )
+
+    if not df_historico.empty:
+        df_historico["CHAVE"] = (
+            df_historico["Contrato"].astype(str)
+            + "_"
+            + df_historico["Data_Ocorrencia"].astype(str)
+        )
+
+    #filtro finalizado
     ocorrencias_novas = df_ocorrencias[
         ~df_ocorrencias["CHAVE"].isin(df_historico.get("CHAVE", []))
+    ]
+
+    contagem = (ocorrencias_novas.groupby([COLUNA_CONTRATO, "Data_Key"]).size())
+
+    chaves_validas = contagem[contagem == 1].index
+
+    ocorrencias_filtradas = ocorrencias_novas[
+        ocorrencias_novas.set_index([COLUNA_CONTRATO, "Data_Key"])
+        .index.isin(chaves_validas)
     ].reset_index(drop=True)
 
-    print("Ocorrências novas encontradas:", len(ocorrencias_novas))
+    print("Contratos filtrados com sucesso.")
 
-    # gera excel
+    ocorrencias_para_historico = ocorrencias_novas.copy()
+
+    #gera excel
     path_excel = PATH_DOWNLOADS / "ocorrencias_filtradas.xlsx"
-    ocorrencias_novas.drop(columns=["Data_Key", "CHAVE"]).to_excel(path_excel, index=False)
+    ocorrencias_filtradas.drop(columns=["Data_Key", "CHAVE"]).to_excel(path_excel, index=False)
     print("Arquivo Excel gerado com sucesso.")
 
-    # formata data p chata da sabrina
-    df_html = ocorrencias_novas.drop(columns=["Data_Key", "CHAVE"]).copy()
-    df_html['DATA'] = df_html['DATA'].dt.strftime('%d/%m/%Y')
-    print("Data formatada para a Sabrina.")
+    #formata data p chata da sabrina
+    df_html = ocorrencias_filtradas.drop(columns=["Data_Key", "CHAVE"]).copy()
+    df_html[COLUNA_DATA_REAL] = df_html[COLUNA_DATA_REAL].dt.strftime('%d/%m/%Y')
+    print("Data formatada para chata da Sabrina.")
 
-    # salva no historico exatamente o que foi enviado, chave completa
-    if not ocorrencias_novas.empty:
+    #salva no historico os contratos enviados
+    if not ocorrencias_para_historico.empty:
         df_novos = pd.DataFrame({
-            "CHAVE": ocorrencias_novas["CHAVE"],
-            "Contrato": ocorrencias_novas[COLUNA_CONTRATO].astype(str),
-            "Data_Ocorrencia": ocorrencias_novas[COLUNA_DATA_REAL].dt.date.astype(str),
-            "Cod_Ocorrencia": ocorrencias_novas[COLUNA_COD_OCORRENCIA].astype(str),
-            "Complemento": ocorrencias_novas[COLUNA_COMPLEMENTO].astype(str),
+            "Contrato": ocorrencias_para_historico[COLUNA_CONTRATO].astype(str),
+            "Data_Ocorrencia": ocorrencias_para_historico[COLUNA_DATA_REAL].dt.date.astype(str),
             "Data_Envio": hoje.strftime("%Y-%m-%d")
         })
 
-        # aqui o drop_duplicates é seguro: só remove se a OCORRÊNCIA inteira for igual
-        df_novos = df_novos.drop_duplicates(subset=["CHAVE"])
+        df_novos = df_novos.drop_duplicates(subset=["Contrato", "Data_Ocorrencia"])
 
         df_historico = pd.concat([df_historico, df_novos], ignore_index=True)
         df_historico.to_csv(PATH_HISTORICO, index=False)
 
-        print("Histórico atualizado com sucesso. Novas linhas gravadas:", len(df_novos))
+        print("Histórico atualizado com sucesso.")
     else:
         print("Nenhuma ocorrência nova para salvar no histórico.")
 
